@@ -2,15 +2,84 @@
 import click
 from collections import Counter
 import csv
+import git
 from github3 import login
 import sys
 import time
+from tqdm import tqdm
 import traceback
 
 
 @click.group()
 def main(args=None):
     return 0
+
+@main.command('clone')
+@click.option('-u', '--username', required=True, help='your github username')
+@click.option('-t', '--token', required=True, help='your github personal access token (https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token)')
+@click.option('-o', '--organization', required=True, help='github organization name, e.g., tulane-cmps2200')
+def clone(username, token, organization):
+    """Clone all repos in this organization, for archiving purposes."""
+    gh = login(username=username, password=token)
+    repos = gh.organization(organization).repositories()
+    for r in repos:
+        repo = 'https://github.com/%s'% str(r)
+        repo_name = str(r)[str(r).rindex('/')+1:]
+        try:
+            print('  cloning %s to %s...' % (repo, repo_name))
+            git.repo.base.Repo.clone_from(repo + '.git', repo_name)
+        except git.exc.GitCommandError as e:
+            print(e)
+            continue
+
+
+@main.command('delete')
+@click.option('-u', '--username', required=True, help='your github username')
+@click.option('-t', '--token', required=True, help='your github personal access token (https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token)')
+@click.option('-o', '--organization', required=True, help='github organization name, e.g., tulane-cmps2200')
+@click.option('-s', '--student-file', required=True, type=click.Path(exists=True), help='text file with one student github id per line')
+def delete(username, token, organization, student_file):
+    """Delete all repositories that end in a student-id suffix (e.g., assignment-01-janedoe).
+    Make sure your Github token has `delete_repo` access."""
+    gh = login(username=username, password=token)
+    student_file_name = click.format_filename(student_file)
+    ids = set(l.strip().lower() for l in open(student_file_name))
+    click.echo("deleting repos for %d students" % len(ids))
+    repos = gh.organization(organization).repositories()
+    todelete = []
+    print('collecting repos...')
+    for r in tqdm(repos):
+        rs = str(r).lower()
+        try:
+            suffix = rs[rs.rindex('-')+1:]
+            if suffix in ids:
+                todelete.append(r)
+        except:
+            continue
+    print('deleting %d repos' % len(todelete))
+    print('\n'.join(str(i) for i in todelete))
+    inp = input('proceed?[y/n]')
+    if inp=='y':
+        for repo in tqdm(todelete):
+            if repo.delete():
+                time.sleep(.05)
+            else:
+                print('\t>>>repo deletion failed: %s' % repo)
+    else:
+        print('aborting')
+    # print(gh.repositories())
+    # return
+
+    # for student in open(student_file_name):
+    #     student = student.strip()
+    #     print(student)
+    #     try:
+    #         pass
+    #         # repo = gh.repository(organization, '%s-%s' % (assignment_prefix, student))
+    #     except:
+    #         print('cannot find repo for %s' % student)
+    #         traceback.print_exc()
+    #         continue
 
 
 @main.command('grades')

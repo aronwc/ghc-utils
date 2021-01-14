@@ -36,7 +36,9 @@ setup(
     entry_points={
         'console_scripts': [
             'ghc-utils=ghc_utils.cli:main',
+            'clone=ghc_utils.cli:clone',
             'grades=ghc_utils.cli:grades',
+            'delete=ghc_utils.cli:delete',
         ],
     },
     install_requires=requirements,
@@ -50,7 +52,7 @@ setup(
     setup_requires=setup_requirements,
     test_suite='tests',
     tests_require=test_requirements,
-    url='https://github.com/aronwc/ghc_utils',
+    url='https://github.com/aronwc/ghc-utils',
     version='0.1.2',
     zip_safe=False,
 )

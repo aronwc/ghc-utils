@@ -1,2 +1,4 @@
 Click==7.0
 github3.py
+tqdm
+gitpython
